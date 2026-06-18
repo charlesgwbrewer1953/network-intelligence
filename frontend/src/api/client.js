@@ -17,6 +17,7 @@ export const scansApi = {
   list: () => client.get('/api/scans').then(r => r.data),
   get: (id) => client.get(`/api/scans/${id}`).then(r => r.data),
   create: (data) => client.post('/api/scans', data).then(r => r.data),
+  request: () => client.post('/api/scans', { scan_type: 'manual' }).then(r => r.data),
 };
 
 export const observationsApi = {

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { devicesApi } from '../api/client'
+import { useState, useEffect, useRef } from 'react'
+import { devicesApi, scansApi } from '../api/client'
 
 function timeAgo(ts) {
   if (!ts) return '—'
@@ -86,13 +86,51 @@ export default function Devices() {
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const [scanMsg, setScanMsg] = useState(null)
+  const pollRef = useRef(null)
+
+  function loadDevices() {
+    return devicesApi.list().then(setDevices)
+  }
 
   useEffect(() => {
     devicesApi.list()
       .then(setDevices)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
+    return () => clearInterval(pollRef.current)
   }, [])
+
+  async function handleScanNow() {
+    setScanning(true)
+    setScanMsg('Scan requested — agent will pick it up within 30 seconds…')
+    try {
+      const scan = await scansApi.request()
+      const scanId = scan.scan_id
+      let attempts = 0
+      pollRef.current = setInterval(async () => {
+        attempts++
+        try {
+          const s = await scansApi.get(scanId)
+          if (s.scan && s.scan.finished_at) {
+            clearInterval(pollRef.current)
+            setScanning(false)
+            setScanMsg(`Scan complete — ${s.scan.devices_found} device(s) found`)
+            await loadDevices()
+          } else if (attempts >= 24) {
+            clearInterval(pollRef.current)
+            setScanning(false)
+            setScanMsg('Scan pending — results will appear when the agent completes it')
+            await loadDevices()
+          }
+        } catch (_) {}
+      }, 5000)
+    } catch (err) {
+      setScanning(false)
+      setScanMsg(`Scan request failed: ${err.message}`)
+    }
+  }
 
   async function handleSave(id, data) {
     const updated = await devicesApi.update(id, data)
@@ -124,7 +162,12 @@ export default function Devices() {
           <h1>Devices</h1>
           <p>{devices.length} device{devices.length !== 1 ? 's' : ''} in registry</p>
         </div>
+        <button className="btn btn-primary" onClick={handleScanNow} disabled={scanning}>
+          {scanning ? 'Scanning…' : 'Scan Now'}
+        </button>
       </div>
+
+      {scanMsg && <div className="error-msg" style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'rgba(88,166,255,0.08)' }}>{scanMsg}</div>}
 
       {error && <div className="error-msg">{error}</div>}
 

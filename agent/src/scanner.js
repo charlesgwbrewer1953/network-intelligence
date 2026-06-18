@@ -1,64 +1,45 @@
 const { execSync } = require('child_process');
 
-/**
- * Stub scanner — returns placeholder discovered devices.
- * Replace individual functions with real arp/ping/dns-sd implementations.
- */
-
-function scanWithArp() {
-  // Stub: in production, parse `arp -a` output
-  return [];
+function parseArpOutput(output) {
+  const observations = [];
+  for (const line of output.split('\n')) {
+    // macOS arp -a format:
+    // ? (192.168.1.1) at a4:91:b1:xx:xx:xx on en0 ifscope [ethernet]
+    // hostname.local (192.168.1.x) at mac on en0 ...
+    // ? (ip) at (incomplete) on en0 ... -- skipped: no 17-char MAC match
+    const match = line.match(/^(\S+)\s+\(([^)]+)\)\s+at\s+([0-9a-f]{2}(?::[0-9a-f]{2}){5})\s+/i);
+    if (!match) continue;
+    const [, hostname, ip, mac] = match;
+    observations.push({
+      observed_mac: mac.toLowerCase(),
+      ip_address: ip,
+      hostname: hostname === '?' ? null : hostname.replace(/\.$/, ''),
+    });
+  }
+  return observations;
 }
 
-function scanWithPing(subnet) {
-  // Stub: in production, ping sweep subnet range
-  return [];
+async function scanWithArp() {
+  const output = execSync('arp -a 2>/dev/null', { encoding: 'utf8' });
+  return parseArpOutput(output);
 }
 
-function scanWithDnsSd() {
-  // Stub: in production, use dns-sd / avahi-browse to find mDNS devices
-  return [];
-}
-
-function generatePlaceholderObservations() {
-  // Placeholder observations so the agent has something to report in V1
-  const samples = [
-    { mac: 'aa:bb:cc:dd:ee:01', ip: '192.168.1.1',   hostname: 'router.local',   latency_ms: 1 },
-    { mac: 'aa:bb:cc:dd:ee:02', ip: '192.168.1.100',  hostname: 'macbook.local',  latency_ms: 12 },
-    { mac: 'aa:bb:cc:dd:ee:03', ip: '192.168.1.101',  hostname: 'iphone.local',   latency_ms: 8 },
-    { mac: 'aa:bb:cc:dd:ee:04', ip: '192.168.1.102',  hostname: 'printer.local',  latency_ms: 45 },
+function stubObservations() {
+  return [
+    { observed_mac: 'aa:bb:cc:dd:ee:01', ip_address: '192.168.1.1',   hostname: 'router.local' },
+    { observed_mac: 'aa:bb:cc:dd:ee:02', ip_address: '192.168.1.100', hostname: 'macbook.local' },
+    { observed_mac: 'aa:bb:cc:dd:ee:03', ip_address: '192.168.1.101', hostname: 'iphone.local' },
+    { observed_mac: 'aa:bb:cc:dd:ee:04', ip_address: '192.168.1.102', hostname: 'printer.local' },
   ];
-
-  return samples.map(s => ({
-    observed_mac: s.mac,
-    ip_address: s.ip,
-    hostname: s.hostname,
-    latency_ms: s.latency_ms,
-    packet_loss: 0,
-    signal_strength: null,
-    seen_at: new Date().toISOString(),
-  }));
 }
 
 async function runScan() {
-  const arpDevices = scanWithArp();
-  const pingDevices = scanWithPing();
-  const mdnsDevices = scanWithDnsSd();
-
-  const combined = [...arpDevices, ...pingDevices, ...mdnsDevices];
-
-  // Fall through to placeholder if real scan returned nothing
-  if (combined.length === 0) {
-    return generatePlaceholderObservations();
+  const mode = process.env.SCANNER || 'stub';
+  if (mode === 'real') {
+    const results = await scanWithArp();
+    return results.length > 0 ? results : stubObservations();
   }
-
-  // Deduplicate by MAC
-  const seen = new Set();
-  return combined.filter(d => {
-    if (seen.has(d.observed_mac)) return false;
-    seen.add(d.observed_mac);
-    return true;
-  });
+  return stubObservations();
 }
 
 module.exports = { runScan };

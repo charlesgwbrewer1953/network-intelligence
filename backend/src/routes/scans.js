@@ -19,6 +19,18 @@ router.get('/', async (req, res) => {
   res.json(rows);
 });
 
+router.get('/pending', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM scans
+     WHERE finished_at IS NULL
+     AND scan_type = 'manual'
+     AND started_at > NOW() - INTERVAL '10 minutes'
+     ORDER BY started_at ASC
+     LIMIT 1`
+  );
+  res.json(rows[0] || null);
+});
+
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
   const scanResult = await pool.query(
