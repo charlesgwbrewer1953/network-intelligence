@@ -68,8 +68,12 @@ router.post('/', async (req, res) => {
   const { rows } = await pool.query(
     `INSERT INTO devices (primary_mac, user_name, hostname, manufacturer, device_type, location, notes)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (primary_mac) DO UPDATE
-       SET last_seen = NOW(), updated_at = NOW()
+     ON CONFLICT (primary_mac) DO UPDATE SET
+       last_seen    = NOW(),
+       updated_at   = NOW(),
+       hostname     = COALESCE(devices.hostname,     EXCLUDED.hostname),
+       manufacturer = COALESCE(devices.manufacturer, EXCLUDED.manufacturer),
+       device_type  = COALESCE(devices.device_type,  EXCLUDED.device_type)
      RETURNING *, (xmax = 0) AS created`,
     [primary_mac, user_name, hostname, manufacturer, device_type, location, notes]
   );
