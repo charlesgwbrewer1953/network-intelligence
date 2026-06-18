@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { networksApi } from '../api/client'
+import { useState, useEffect, useRef } from 'react'
+import { networksApi, scansApi } from '../api/client'
 
 function timeAgo(ts) {
   if (!ts) return '—'
@@ -21,13 +21,51 @@ export default function Networks() {
   const [networks, setNetworks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanMsg, setScanMsg] = useState(null)
+  const pollRef = useRef(null)
+
+  function loadNetworks() {
+    return networksApi.list().then(setNetworks)
+  }
 
   useEffect(() => {
     networksApi.list()
       .then(setNetworks)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
+    return () => clearInterval(pollRef.current)
   }, [])
+
+  async function handleScanNow() {
+    setScanning(true)
+    setScanMsg('Scan requested — agent will pick it up within 30 seconds…')
+    try {
+      const scan = await scansApi.request()
+      const scanId = scan.scan_id
+      let attempts = 0
+      pollRef.current = setInterval(async () => {
+        attempts++
+        try {
+          const s = await scansApi.get(scanId)
+          if (s.scan && s.scan.finished_at) {
+            clearInterval(pollRef.current)
+            setScanning(false)
+            setScanMsg(`Scan complete — ${s.scan.devices_found} device(s) found`)
+            await loadNetworks()
+          } else if (attempts >= 24) {
+            clearInterval(pollRef.current)
+            setScanning(false)
+            setScanMsg('Scan pending — results will appear when the agent completes it')
+            await loadNetworks()
+          }
+        } catch (_) {}
+      }, 5000)
+    } catch (err) {
+      setScanning(false)
+      setScanMsg(`Scan request failed: ${err.message}`)
+    }
+  }
 
   if (loading) return <div className="loading">Loading…</div>
 
@@ -38,7 +76,12 @@ export default function Networks() {
           <h1>Networks</h1>
           <p>{networks.length} network{networks.length !== 1 ? 's' : ''} discovered</p>
         </div>
+        <button className="btn btn-primary" onClick={handleScanNow} disabled={scanning}>
+          {scanning ? 'Scanning…' : 'Scan Now'}
+        </button>
       </div>
+
+      {scanMsg && <div className="error-msg" style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'rgba(88,166,255,0.08)' }}>{scanMsg}</div>}
 
       {error && <div className="error-msg">{error}</div>}
 
