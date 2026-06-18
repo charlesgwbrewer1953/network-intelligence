@@ -23,10 +23,9 @@ export default function App() {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="brand-icon">⬡</div>
           <div>
-            <div className="brand-name">Network</div>
-            <div className="brand-sub">Intelligence</div>
+            <div className="dk-brand">demographiKon</div>
+            <div className="brand-sub">Network Intelligence</div>
           </div>
         </div>
         <nav className="sidebar-nav">

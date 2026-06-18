@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -85,11 +87,12 @@ input:focus, select:focus, textarea:focus {
   line-height: 1;
 }
 
-.brand-name {
-  font-size: 14px;
-  font-weight: 700;
+.dk-brand {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 300;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
   color: var(--text);
-  letter-spacing: 0.5px;
 }
 
 .brand-sub {
