@@ -9,17 +9,22 @@ router.get('/', async (req, res) => {
     SELECT
       d.*,
       (
-        SELECT ip_address
-        FROM scan_observations so
-        WHERE so.device_id = d.device_id
-        ORDER BY seen_at DESC
-        LIMIT 1
+        SELECT ip_address FROM scan_observations so
+        WHERE so.device_id = d.device_id ORDER BY seen_at DESC LIMIT 1
       ) AS current_ip,
       (
-        SELECT COUNT(*)::int
-        FROM scan_observations so
+        SELECT COUNT(*)::int FROM scan_observations so
         WHERE so.device_id = d.device_id
-      ) AS observation_count
+      ) AS observation_count,
+      (
+        SELECT n.cidr FROM device_network_observations dno
+        JOIN networks n ON n.network_id = dno.network_id
+        WHERE dno.device_id = d.device_id ORDER BY dno.seen_at DESC LIMIT 1
+      ) AS current_network,
+      (
+        SELECT dno.interface_name FROM device_network_observations dno
+        WHERE dno.device_id = d.device_id ORDER BY dno.seen_at DESC LIMIT 1
+      ) AS current_interface
     FROM devices d
     ORDER BY d.last_seen DESC
   `);

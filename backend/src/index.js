@@ -10,6 +10,7 @@ const diagnosticsRouter = require('./routes/diagnostics');
 const networksRouter = require('./routes/networks');
 const networkInterfacesRouter = require('./routes/network-interfaces');
 const networkRelationshipsRouter = require('./routes/network-relationships');
+const deviceNetworkObservationsRouter = require('./routes/device-network-observations');
 
 const app = express();
 const PORT = process.env.PORT || 3101;
@@ -29,6 +30,7 @@ app.use('/api/diagnostics', diagnosticsRouter);
 app.use('/api/networks', networksRouter);
 app.use('/api/network-interfaces', networkInterfacesRouter);
 app.use('/api/network-relationships', networkRelationshipsRouter);
+app.use('/api/device-network-observations', deviceNetworkObservationsRouter);
 
 app.use((err, req, res, next) => {
   logger.error('unhandled error', { error: err.message, stack: err.stack });

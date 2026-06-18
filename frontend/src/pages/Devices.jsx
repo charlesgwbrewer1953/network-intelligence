@@ -193,6 +193,8 @@ export default function Devices() {
                   <th>Name / Host</th>
                   <th>MAC</th>
                   <th>IP</th>
+                  <th>Network</th>
+                  <th>Interface</th>
                   <th>Type</th>
                   <th>Manufacturer</th>
                   <th>Location</th>
@@ -214,6 +216,8 @@ export default function Devices() {
                       </td>
                       <td className="mono">{d.primary_mac}</td>
                       <td className="mono">{d.current_ip || '—'}</td>
+                      <td className="mono" style={{ fontSize: 11 }}>{d.current_network || <span className="text-muted">—</span>}</td>
+                      <td>{d.current_interface || <span className="text-muted">—</span>}</td>
                       <td>{d.device_type || <span className="text-muted">—</span>}</td>
                       <td>{d.manufacturer || <span className="text-muted">—</span>}</td>
                       <td>{d.location || <span className="text-muted">—</span>}</td>

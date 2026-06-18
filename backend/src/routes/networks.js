@@ -4,9 +4,25 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT n.*,
-      (SELECT COUNT(*)::int FROM device_networks dn WHERE dn.network_id = n.network_id) AS device_count
+    SELECT
+      n.*,
+      ni.name           AS interface_name,
+      ni.display_name   AS interface_display_name,
+      ni.interface_type,
+      ni.ssid,
+      ni.ip_address     AS local_ip,
+      (
+        SELECT COUNT(DISTINCT dno.device_id)::int
+        FROM device_network_observations dno
+        WHERE dno.network_id = n.network_id
+      ) AS device_count,
+      (
+        SELECT MAX(dno.seen_at)
+        FROM device_network_observations dno
+        WHERE dno.network_id = n.network_id
+      ) AS last_scanned
     FROM networks n
+    LEFT JOIN network_interfaces ni ON ni.network_id = n.network_id
     ORDER BY n.last_seen DESC
   `);
   res.json(rows);
@@ -20,11 +36,11 @@ router.post('/', async (req, res) => {
     `INSERT INTO networks (cidr, name, network_type, gateway_ip, gateway_mac)
      VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT ON CONSTRAINT networks_cidr_unique DO UPDATE SET
-       name         = COALESCE(networks.name, EXCLUDED.name),
+       name        = COALESCE(networks.name, EXCLUDED.name),
        network_type = COALESCE(networks.network_type, EXCLUDED.network_type),
-       gateway_ip   = COALESCE(EXCLUDED.gateway_ip, networks.gateway_ip),
-       gateway_mac  = COALESCE(EXCLUDED.gateway_mac, networks.gateway_mac),
-       last_seen    = NOW()
+       gateway_ip  = COALESCE(EXCLUDED.gateway_ip, networks.gateway_ip),
+       gateway_mac = COALESCE(EXCLUDED.gateway_mac, networks.gateway_mac),
+       last_seen   = NOW()
      RETURNING *`,
     [cidr, name || null, network_type || null, gateway_ip || null, gateway_mac || null]
   );

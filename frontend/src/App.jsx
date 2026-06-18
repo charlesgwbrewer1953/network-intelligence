@@ -4,6 +4,7 @@ import Devices from './pages/Devices'
 import Scans from './pages/Scans'
 import Diagnostics from './pages/Diagnostics'
 import Topology from './pages/Topology'
+import Networks from './pages/Networks'
 import './App.css'
 
 function NavItem({ to, label, icon }) {
@@ -33,6 +34,7 @@ export default function App() {
           <NavItem to="/devices" label="Devices" icon="⊡" />
           <NavItem to="/scans" label="Scans" icon="◎" />
           <NavItem to="/diagnostics" label="Diagnostics" icon="◇" />
+          <NavItem to="/networks" label="Networks" icon="◉" />
           <NavItem to="/topology" label="Topology" icon="⬡" />
         </nav>
         <div className="sidebar-footer">v1.0</div>
@@ -43,6 +45,7 @@ export default function App() {
           <Route path="/devices" element={<Devices />} />
           <Route path="/scans" element={<Scans />} />
           <Route path="/diagnostics" element={<Diagnostics />} />
+          <Route path="/networks" element={<Networks />} />
           <Route path="/topology" element={<Topology />} />
         </Routes>
       </main>

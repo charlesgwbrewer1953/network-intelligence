@@ -25,6 +25,10 @@ export const observationsApi = {
   get: (id) => client.get(`/api/observations/${id}`).then(r => r.data),
 };
 
+export const networksApi = {
+  list: () => client.get('/api/networks').then(r => r.data),
+};
+
 export const diagnosticsApi = {
   list: () => client.get('/api/diagnostics').then(r => r.data),
 };

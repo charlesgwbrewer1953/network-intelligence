@@ -50,16 +50,8 @@ async function reportInterfaces(interfaces, networkIds) {
   }
 }
 
-async function buildAndPostObservations(observations, networks, scanId) {
-  const networkIds = await reportNetworks(networks);
-
-  // Determine gateway device IDs for relationship building
+async function buildAndPostObservations(observations, networkIds, scanId) {
   const gatewayMacByNetworkId = {};
-  for (const net of networks) {
-    if (net.gateway_mac && networkIds[net.cidr]) {
-      gatewayMacByNetworkId[networkIds[net.cidr]] = net.gateway_mac;
-    }
-  }
 
   const deviceIdByMac = {};
   const payloads = [];
@@ -73,7 +65,7 @@ async function buildAndPostObservations(observations, networks, scanId) {
     payloads.push({ ...obs, scan_id: scanId, device_id: deviceId });
   }
 
-  // Post observations
+  // Post scan_observations
   for (const payload of payloads) {
     try {
       await api.post('/api/observations', payload);
@@ -82,21 +74,36 @@ async function buildAndPostObservations(observations, networks, scanId) {
     }
   }
 
-  // Record device-network membership and gateway relationships
-  for (const [cidr, networkId] of Object.entries(networkIds)) {
-    const gatewayMac = gatewayMacByNetworkId[networkId];
-    const gatewayDeviceId = gatewayMac ? deviceIdByMac[gatewayMac] : null;
+  // Post device_network_observations — one per device per network seen
+  for (const payload of payloads) {
+    if (!payload.device_id || !payload._networkCidr) continue;
+    const networkId = networkIds[payload._networkCidr];
+    if (!networkId) continue;
+    try {
+      await api.post('/api/device-network-observations', {
+        device_id:      payload.device_id,
+        scan_id:        scanId,
+        network_id:     networkId,
+        interface_name: payload._interfaceName || null,
+        observed_ip:    payload.ip_address || null,
+      });
+    } catch (err) {
+      console.warn('Failed to post device-network-observation:', err.message);
+    }
+  }
 
+  // Record legacy device_networks membership and gateway relationships
+  for (const [cidr, networkId] of Object.entries(networkIds)) {
     for (const obs of observations) {
       const deviceId = obs.observed_mac ? deviceIdByMac[obs.observed_mac] : null;
       if (!deviceId) continue;
 
-      // Record network membership
       try {
         await api.post(`/api/networks/${networkId}/devices`, { device_id: deviceId });
       } catch (_) {}
 
-      // Record gateway → client relationship
+      const gatewayMac = gatewayMacByNetworkId[networkId];
+      const gatewayDeviceId = gatewayMac ? deviceIdByMac[gatewayMac] : null;
       if (gatewayDeviceId && deviceId !== gatewayDeviceId) {
         try {
           await api.post('/api/network-relationships', {
@@ -112,7 +119,6 @@ async function buildAndPostObservations(observations, networks, scanId) {
     }
   }
 
-  // Update scan record
   await api.patch(`/api/scans/${scanId}`, {
     finished_at:   new Date().toISOString(),
     devices_found: payloads.length,
@@ -121,19 +127,22 @@ async function buildAndPostObservations(observations, networks, scanId) {
   return { scanId, count: payloads.length };
 }
 
+// ── reportNetworks called exactly once per scan ───────────────────────────────
 async function reportScan(observations, networks = [], interfaces = []) {
   const { data: scan } = await api.post('/api/scans', {
     agent_id:  AGENT_ID,
     scan_type: 'agent',
   });
 
-  await reportInterfaces(interfaces, await reportNetworks(networks));
-  return buildAndPostObservations(observations, networks, scan.scan_id);
+  const networkIds = await reportNetworks(networks);
+  await reportInterfaces(interfaces, networkIds);
+  return buildAndPostObservations(observations, networkIds, scan.scan_id);
 }
 
 async function reportExistingScan(observations, scanId, networks = [], interfaces = []) {
-  await reportInterfaces(interfaces, await reportNetworks(networks));
-  return buildAndPostObservations(observations, networks, scanId);
+  const networkIds = await reportNetworks(networks);
+  await reportInterfaces(interfaces, networkIds);
+  return buildAndPostObservations(observations, networkIds, scanId);
 }
 
 module.exports = { reportScan, reportExistingScan, api };
