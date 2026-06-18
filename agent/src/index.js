@@ -8,8 +8,10 @@ const PENDING_CHECK_MS = 30 * 1000;
 async function tick() {
   console.log(`[${new Date().toISOString()}] Starting scan…`);
   try {
-    const observations = await runScan();
-    console.log(`  Discovered ${observations.length} device(s)`);
+    const { observations, stats } = await runScan();
+    console.log(`  ARP entries:   ${stats.raw_arp_entries}`);
+    console.log(`  Filtered:      ${stats.filtered_entries}`);
+    console.log(`  Valid devices: ${stats.valid_device_entries}`);
     const { scanId, count } = await reportScan(observations);
     console.log(`  Reported scan ${scanId} with ${count} observation(s)`);
   } catch (err) {
@@ -22,7 +24,10 @@ async function checkPending() {
     const { data } = await api.get('/api/scans/pending');
     if (data && data.scan_id) {
       console.log(`[${new Date().toISOString()}] Processing pending scan ${data.scan_id}…`);
-      const observations = await runScan();
+      const { observations, stats } = await runScan();
+      console.log(`  ARP entries:   ${stats.raw_arp_entries}`);
+      console.log(`  Filtered:      ${stats.filtered_entries}`);
+      console.log(`  Valid devices: ${stats.valid_device_entries}`);
       const { count } = await reportExistingScan(observations, data.scan_id);
       console.log(`  Completed pending scan with ${count} observation(s)`);
     }
