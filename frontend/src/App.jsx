@@ -37,7 +37,7 @@ export default function App() {
           <NavItem to="/networks" label="Networks" icon="◉" />
           <NavItem to="/topology" label="Topology" icon="⬡" />
         </nav>
-        <div className="sidebar-footer">v1.0</div>
+        <div className="sidebar-footer">v{__APP_VERSION__}</div>
       </aside>
       <main className="main-content">
         <Routes>
