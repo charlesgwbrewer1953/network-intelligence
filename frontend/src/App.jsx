@@ -1,4 +1,5 @@
 import { Routes, Route, NavLink } from 'react-router-dom'
+import { APP_VERSION } from './version'
 import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
 import Scans from './pages/Scans'
@@ -37,7 +38,7 @@ export default function App() {
           <NavItem to="/networks" label="Networks" icon="◉" />
           <NavItem to="/topology" label="Topology" icon="⬡" />
         </nav>
-        <div className="sidebar-footer">v{__APP_VERSION__}</div>
+        <div className="sidebar-footer">v{APP_VERSION}</div>
       </aside>
       <main className="main-content">
         <Routes>
